@@ -20,7 +20,7 @@ pub struct VfsNodeAttr {
 
 bitflags::bitflags! {
     /// Node (file/directory) permission mode.
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct VfsNodePerm: u16 {
         /// Owner has read permission.
         const OWNER_READ = 0o400;
