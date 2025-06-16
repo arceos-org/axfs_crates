@@ -25,10 +25,7 @@ fn test_vfs_data_structures() {
     assert_eq!(file_attr.file_type(), VfsNodeType::File);
 
     let dir_attr = VfsNodeAttr::new_dir(4096, 8);
-    assert!(
-        dir_attr.is_dir(),
-        "Should be identified as a directory"
-    );
+    assert!(dir_attr.is_dir(), "Should be identified as a directory");
     // Now that VfsNodePerm implements PartialEq, this line works correctly
     assert_eq!(
         dir_attr.perm(),
