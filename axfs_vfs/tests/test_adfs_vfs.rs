@@ -16,19 +16,17 @@ fn test_vfs_data_structures() {
 
     // Test VfsNodeAttr (node attributes)
     let file_attr = VfsNodeAttr::new_file(1024, 2);
-    assert_eq!(file_attr.is_file(), true, "Should be identified as a file");
-    assert_eq!(
-        file_attr.is_dir(),
-        false,
+    assert!(file_attr.is_file(), "Should be identified as a file");
+    assert!(
+        !file_attr.is_dir(),
         "Should not be identified as a directory"
     );
     assert_eq!(file_attr.size(), 1024, "File size should be 1024");
     assert_eq!(file_attr.file_type(), VfsNodeType::File);
 
     let dir_attr = VfsNodeAttr::new_dir(4096, 8);
-    assert_eq!(
+    assert!(
         dir_attr.is_dir(),
-        true,
         "Should be identified as a directory"
     );
     // Now that VfsNodePerm implements PartialEq, this line works correctly

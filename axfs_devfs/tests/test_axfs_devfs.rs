@@ -1,7 +1,6 @@
 // tests/test_axfs_dexfs.rs
 
 // 1. Import the crate itself.
-use axfs_devfs;
 
 // 2. Import other dependencies required for testing.
 use axfs_vfs::{VfsError, VfsNodeType, VfsOps};
