@@ -9,9 +9,6 @@ extern crate alloc;
 mod dir;
 mod file;
 
-#[cfg(test)]
-mod tests;
-
 pub use self::dir::DirNode;
 pub use self::file::FileNode;
 

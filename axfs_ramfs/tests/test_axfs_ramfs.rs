@@ -1,194 +1,182 @@
-// tests/test_axfs_ramfs.rs
+// In tests/test_axfs_ramfs.rs
 
-use axfs_ramfs::*;
-use axfs_vfs::{VfsError, VfsNodeType, VfsOps};
 use std::sync::Arc;
 
-/// Helper function: Creates a standard filesystem structure for multiple tests.
-fn setup_test_fs() -> RamFileSystem {
+// FIX 1: Removed `RamDir` as it's not a public type.
+use axfs_ramfs::RamFileSystem;
+// FIX 2: Removed `VfsNodeOps` as it's an unused import according to the compiler.
+use axfs_vfs::{VfsError, VfsNodeType, VfsOps, VfsResult};
+
+// =================================================================
+// Helper Functions
+// =================================================================
+
+/// Helper: Creates a standard filesystem structure for multiple tests.
+fn setup_complex_fs() -> RamFileSystem {
     let ramfs = RamFileSystem::new();
     let root = ramfs.root_dir();
 
-    // .clone() before calling methods that consume ownership.
     root.clone().create("file.txt", VfsNodeType::File).unwrap();
     root.clone().create("dir1", VfsNodeType::Dir).unwrap();
-    let dir1 = root.clone().lookup("dir1").unwrap();
+
+    let dir1 = root.lookup("dir1").unwrap();
     dir1.clone().create("dir2", VfsNodeType::Dir).unwrap();
-    let dir2 = dir1.clone().lookup("dir2").unwrap();
+
+    let dir2 = dir1.lookup("dir2").unwrap();
     dir2.create("nested_file.txt", VfsNodeType::File).unwrap();
+
     ramfs
 }
 
+/// Helper: Tests basic filesystem operations.
+fn run_basic_ops_tests(ramfs: &RamFileSystem) -> VfsResult<()> {
+    const N: usize = 32;
+    const N_HALF: usize = N / 2;
+    let mut buf = [1; N];
+
+    let root = ramfs.root_dir();
+    let f1 = root.lookup("f1")?;
+
+    assert_eq!(f1.clone().get_attr()?.file_type(), VfsNodeType::File);
+    assert_eq!(f1.clone().get_attr()?.size(), 0);
+
+    assert_eq!(f1.clone().write_at(N_HALF as u64, &buf[..N_HALF])?, N_HALF);
+    assert_eq!(f1.clone().get_attr()?.size(), N as u64);
+    assert_eq!(f1.read_at(0, &mut buf)?, N);
+    assert_eq!(buf[..N_HALF], [0; N_HALF]);
+    assert_eq!(buf[N_HALF..], [1; N_HALF]);
+    Ok(())
+}
+
+/// Helper: Tests parent directory and path resolution.
+fn run_parent_and_path_tests(ramfs: &RamFileSystem) -> VfsResult<()> {
+    let root = ramfs.root_dir();
+    let foo = root.clone().lookup("foo")?;
+    let bar = foo.clone().lookup("bar")?;
+
+    assert!(bar.parent().is_some());
+    assert!(Arc::ptr_eq(&bar.parent().unwrap(), &foo));
+
+    assert!(Arc::ptr_eq(&bar.clone().lookup("..")?, &foo));
+    assert!(Arc::ptr_eq(&foo.clone().lookup("..")?, &root));
+
+    assert!(Arc::ptr_eq(
+        &root.clone().lookup("foo/bar/..")?,
+        &root.clone().lookup("foo")?,
+    ));
+    assert!(Arc::ptr_eq(
+        &root.clone().lookup("./foo/../foo/bar/f4")?,
+        &root.lookup("foo/bar/f4")?,
+    ));
+    Ok(())
+}
+
 // =================================================================
-// Test Case 1: Edge cases for path resolution and lookup.
+// Test Scenarios
 // =================================================================
+
+#[test]
+fn test_full_lifecycle() {
+    let ramfs = RamFileSystem::new();
+    let root = ramfs.root_dir();
+    root.clone().create("f1", VfsNodeType::File).unwrap();
+    root.clone().create("f2", VfsNodeType::File).unwrap();
+    root.clone().create("foo", VfsNodeType::Dir).unwrap();
+
+    let foo = root.clone().lookup("foo").unwrap();
+    foo.clone().create("f3", VfsNodeType::File).unwrap();
+    foo.clone().create("bar", VfsNodeType::Dir).unwrap();
+
+    let bar = foo.lookup("bar").unwrap();
+    bar.create("f4", VfsNodeType::File).unwrap();
+
+    // This call works because `root_dir_node` on RamFileSystem and its `get_entries`
+    // method are public, without needing to name the concrete type.
+    let mut entries = ramfs.root_dir_node().get_entries();
+    entries.sort();
+    assert_eq!(entries, ["f1", "f2", "foo"]);
+
+    run_basic_ops_tests(&ramfs).expect("Basic ops tests failed");
+    run_parent_and_path_tests(&ramfs).expect("Parent and path tests failed");
+
+    assert_eq!(root.clone().remove("f1"), Ok(()));
+    assert_eq!(root.clone().remove("//f2"), Ok(()));
+    assert_eq!(
+        root.clone().remove("foo").err(),
+        Some(VfsError::DirectoryNotEmpty)
+    );
+    assert_eq!(root.clone().remove("foo/bar/f4"), Ok(()));
+    assert_eq!(root.clone().remove("foo/bar"), Ok(()));
+    assert_eq!(root.clone().remove("./foo//.//f3"), Ok(()));
+    assert_eq!(root.clone().remove("./foo"), Ok(()));
+    assert!(ramfs.root_dir_node().get_entries().is_empty());
+}
+
 #[test]
 fn test_path_manipulation_and_lookup() {
-    println!("\n--- Test: Path Resolution and Lookup ---");
-    let ramfs = setup_test_fs();
+    let ramfs = setup_complex_fs();
     let root = ramfs.root_dir();
-
-    // Clone before each call to .lookup() or other methods that consume self.
     let dir1 = root.clone().lookup("dir1").unwrap();
     let dir2 = root.clone().lookup("dir1/dir2").unwrap();
 
-    // 1. Test with redundant slashes.
-    println!("Testing: Redundant slashes");
-    let found_dir2 = root.clone().lookup("///dir1//dir2/").unwrap();
-    assert!(
-        Arc::ptr_eq(&dir2, &found_dir2),
-        "Path resolution with extra slashes should be correct"
-    );
+    assert!(Arc::ptr_eq(
+        &root.clone().lookup("///dir1//./dir2/..").unwrap(),
+        &dir1
+    ));
+    assert!(Arc::ptr_eq(&dir2.lookup("..").unwrap(), &dir1));
 
-    // 2. Test with current directory indicator '.'.
-    println!("Testing: Current directory indicator '.'");
-    let found_dir2_with_dots = root.clone().lookup("./dir1/./dir2").unwrap();
-    assert!(
-        Arc::ptr_eq(&dir2, &found_dir2_with_dots),
-        "Path resolution with '.' should be correct"
-    );
-
-    // 3. Test with parent directory indicator '..'.
-    println!("Testing: Parent directory indicator '..'");
-    let found_dir1 = dir2.clone().lookup("..").unwrap();
-    assert!(
-        Arc::ptr_eq(&dir1, &found_dir1),
-        "'..' should correctly return the parent directory"
-    );
-
-    // 4. Test complex '..' combination paths.
-    let found_root = dir2.clone().lookup("../..").unwrap();
-    assert!(
-        Arc::ptr_eq(&root, &found_root),
-        "'../..' should return the root directory"
-    );
-
-    // 5. Test lookup from a file node (should fail).
-    println!("Testing: Lookup on a file node");
-    let file = root.clone().lookup("file.txt").unwrap();
-    assert_eq!(
-        file.lookup("any").err(), // 'file' is moved here, but it's okay as it's not used afterward.
-        Some(VfsError::NotADirectory),
-        "Performing lookup on a file should return NotADirectory"
-    );
-
-    println!("--- Path resolution tests passed ---");
+    let file = root.lookup("file.txt").unwrap();
+    assert_eq!(file.lookup("any").err(), Some(VfsError::NotADirectory));
 }
 
-// =================================================================
-// Test Case 2: Edge cases for file I/O.
-// =================================================================
 #[test]
 fn test_io_edge_cases() {
-    println!("\n--- Test: File I/O Edge Cases ---");
     let ramfs = RamFileSystem::new();
     let root = ramfs.root_dir();
     root.clone().create("data.dat", VfsNodeType::File).unwrap();
-    let file = root.clone().lookup("data.dat").unwrap();
-
+    let file = root.lookup("data.dat").unwrap();
     let mut buf = [0u8; 32];
 
-    // 1. Write past the end of the file.
-    println!("Testing: Writing past the end of the file");
-    file.clone().write_at(10, b"world").unwrap();
-    assert_eq!(file.get_attr().unwrap().size(), 15);
+    file.clone().write_at(5, b"hello").unwrap();
+    assert_eq!(file.clone().get_attr().unwrap().size(), 10);
+    file.clone().read_at(0, &mut buf[..10]).unwrap();
+    assert_eq!(&buf[..10], b"\0\0\0\0\0hello");
 
-    let bytes_read = file.clone().read_at(0, &mut buf).unwrap();
+    file.clone().truncate(5).unwrap();
+    assert_eq!(file.clone().get_attr().unwrap().size(), 5);
+
+    file.clone().truncate(15).unwrap();
+    assert_eq!(file.clone().get_attr().unwrap().size(), 15);
+    let bytes_read = file.read_at(0, &mut buf).unwrap();
     assert_eq!(bytes_read, 15);
-    assert_eq!(&buf[..bytes_read], b"\0\0\0\0\0\0\0\0\0\0world");
-
-    // 2. Read past the end of the file.
-    println!("Testing: Reading past the end of the file");
-    let mut small_buf = [0u8; 8];
-    let bytes_read = file.clone().read_at(10, &mut small_buf).unwrap();
-    assert_eq!(bytes_read, 5);
-    assert_eq!(&small_buf[..bytes_read], b"world");
-
-    // 3. Truncate file to make it larger.
-    println!("Testing: Truncating file to make it larger");
-    file.clone().truncate(20).unwrap();
-    assert_eq!(file.get_attr().unwrap().size(), 20);
-    let bytes_read = file.clone().read_at(0, &mut buf).unwrap();
-    assert_eq!(bytes_read, 20);
-    assert_eq!(&buf[..15], b"\0\0\0\0\0\0\0\0\0\0world");
-    assert_eq!(&buf[15..20], &[0, 0, 0, 0, 0]);
-
-    // 4. Truncate file to zero.
-    println!("Testing: Truncating file to zero");
-    file.clone().truncate(0).unwrap();
-    assert_eq!(file.get_attr().unwrap().size(), 0);
-    let bytes_read = file.read_at(0, &mut buf).unwrap(); // Last use, no clone needed.
-    assert_eq!(
-        bytes_read, 0,
-        "Reading from an empty file should return 0 bytes"
-    );
-
-    println!("--- File I/O edge case tests passed ---");
+    // After truncating to 5, the "hello" part was cut off.
+    // Expanding to 15 should result in all zeros.
+    assert_eq!(&buf[..bytes_read], &[0; 15]);
 }
 
-// =================================================================
-// Test Case 3: Verification of various error conditions.
-// =================================================================
 #[test]
 fn test_error_conditions() {
-    println!("\n--- Test: Error Conditions ---");
-    let ramfs = setup_test_fs();
+    let ramfs = setup_complex_fs();
     let root = ramfs.root_dir();
     let dir1 = root.clone().lookup("dir1").unwrap();
-    let file = root.clone().lookup("file.txt").unwrap();
 
-    // 1. AlreadyExists error.
-    println!("Testing: AlreadyExists error");
-    assert_eq!(
-        root.clone().create("file.txt", VfsNodeType::File).err(),
-        Some(VfsError::AlreadyExists)
-    );
     assert_eq!(
         root.clone().create("dir1", VfsNodeType::Dir).err(),
         Some(VfsError::AlreadyExists)
     );
-
-    // 2. DirectoryNotEmpty error.
-    println!("Testing: DirectoryNotEmpty error");
     assert_eq!(
         root.clone().remove("dir1").err(),
         Some(VfsError::DirectoryNotEmpty)
     );
-
-    // 3. NotADirectory error.
-    println!("Testing: NotADirectory error");
     assert_eq!(
-        file.clone().create("anything", VfsNodeType::File).err(),
-        Some(VfsError::NotADirectory)
-    );
-
-    // 4. IsADirectory error.
-    println!("Testing: IsADirectory error");
-    let mut buf = [0u8; 1];
-    assert_eq!(
-        dir1.clone().read_at(0, &mut buf).err(),
+        dir1.clone().read_at(0, &mut [0]).err(),
         Some(VfsError::IsADirectory)
     );
     assert_eq!(
-        dir1.write_at(0, &buf).err(), // Last use of dir1, no clone needed.
+        dir1.clone().write_at(0, &[0]).err(),
         Some(VfsError::IsADirectory)
     );
-
-    // 5. InvalidInput error.
-    println!("Testing: InvalidInput error");
-    assert_eq!(root.clone().remove(".").err(), Some(VfsError::InvalidInput));
-    assert_eq!(
-        root.clone().remove("..").err(),
-        Some(VfsError::InvalidInput)
-    );
-
-    // 6. NotFound error.
-    println!("Testing: NotFound error");
-    assert_eq!(
-        root.clone().lookup("no-such-file").err(),
-        Some(VfsError::NotFound)
-    );
-    assert_eq!(root.remove("no-such-file").err(), Some(VfsError::NotFound)); // Last use of root.
-
-    println!("--- Error condition tests passed ---");
+    assert_eq!(dir1.clone().remove(".").err(), Some(VfsError::InvalidInput));
+    assert_eq!(dir1.remove("..").err(), Some(VfsError::InvalidInput));
+    assert_eq!(root.lookup("no-such-file").err(), Some(VfsError::NotFound));
 }

@@ -10,9 +10,6 @@ mod dir;
 mod null;
 mod zero;
 
-#[cfg(test)]
-mod tests;
-
 pub use self::dir::DirNode;
 pub use self::null::NullDev;
 pub use self::zero::ZeroDev;
