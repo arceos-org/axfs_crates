@@ -11,9 +11,6 @@ mod null;
 mod urandom;
 mod zero;
 
-#[cfg(test)]
-mod tests;
-
 pub use self::dir::DirNode;
 pub use self::null::NullDev;
 pub use self::urandom::UrandomDev;

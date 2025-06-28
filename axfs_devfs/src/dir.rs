@@ -88,7 +88,7 @@ impl VfsNodeOps for DirNode {
     }
 
     fn create(&self, path: &str, ty: VfsNodeType) -> VfsResult {
-        log::debug!("create {:?} at devfs: {}", ty, path);
+        log::debug!("create {ty:?} at devfs: {path}");
         let (name, rest) = split_path(path);
         if let Some(rest) = rest {
             match name {
@@ -109,7 +109,7 @@ impl VfsNodeOps for DirNode {
     }
 
     fn remove(&self, path: &str) -> VfsResult {
-        log::debug!("remove at devfs: {}", path);
+        log::debug!("remove at devfs: {path}");
         let (name, rest) = split_path(path);
         if let Some(rest) = rest {
             match name {
