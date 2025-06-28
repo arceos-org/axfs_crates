@@ -9,6 +9,7 @@ pub struct UrandomDev {
 }
 
 impl UrandomDev {
+    /// Create a new instance of the urandom device.
     pub fn new() -> Self {
         Self {
             seed: AtomicU64::new(0xa2ce_a2ce),
