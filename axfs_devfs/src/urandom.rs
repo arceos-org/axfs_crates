@@ -10,10 +10,15 @@ pub struct UrandomDev {
 
 impl UrandomDev {
     /// Create a new instance of the urandom device.
-    pub fn new() -> Self {
+    pub fn new(seed: u64) -> Self {
         Self {
-            seed: AtomicU64::new(0xa2ce_a2ce),
+            seed: AtomicU64::new(seed),
         }
+    }
+
+    /// Create a new instance with a default seed.
+    fn new_with_default_seed() -> Self {
+        Self::new(0xa2ce_a2ce)
     }
 
     /// LCG pseudo-random number generator
@@ -30,7 +35,7 @@ impl UrandomDev {
 
 impl Default for UrandomDev {
     fn default() -> Self {
-        Self::new()
+        Self::new_with_default_seed()
     }
 }
 
