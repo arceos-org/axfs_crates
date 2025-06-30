@@ -1,9 +1,9 @@
 [package]
 name = "axfs_ramfs"
-edition = "2021"
 description = "RAM filesystem used by ArceOS"
 documentation = "https://docs.rs/axfs_ramfs"
 keywords = ["arceos", "filesystem", "ramfs"]
+edition.workspace = true
 version.workspace = true
 authors.workspace = true
 license.workspace = true

@@ -1,9 +1,9 @@
 [package]
 name = "axfs_devfs"
-edition = "2021"
 description = "Device filesystem used by ArceOS"
 documentation = "https://docs.rs/axfs_devfs"
 keywords = ["arceos", "filesystem", "devfs"]
+edition.workspace = true
 version.workspace = true
 authors.workspace = true
 license.workspace = true

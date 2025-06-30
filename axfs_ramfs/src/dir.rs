@@ -43,7 +43,7 @@ impl DirNode {
     /// Creates a new node with the given name and type in this directory.
     pub fn create_node(&self, name: &str, ty: VfsNodeType) -> VfsResult {
         if self.exist(name) {
-            log::error!("AlreadyExists {}", name);
+            log::error!("AlreadyExists {name}");
             return Err(VfsError::AlreadyExists);
         }
         let node: VfsNodeRef = match ty {
@@ -118,7 +118,7 @@ impl VfsNodeOps for DirNode {
     }
 
     fn create(&self, path: &str, ty: VfsNodeType) -> VfsResult {
-        log::debug!("create {:?} at ramfs: {}", ty, path);
+        log::debug!("create {ty:?} at ramfs: {path}");
         let (name, rest) = split_path(path);
         if let Some(rest) = rest {
             match name {
@@ -142,7 +142,7 @@ impl VfsNodeOps for DirNode {
     }
 
     fn remove(&self, path: &str) -> VfsResult {
-        log::debug!("remove at ramfs: {}", path);
+        log::debug!("remove at ramfs: {path}");
         let (name, rest) = split_path(path);
         if let Some(rest) = rest {
             match name {
