@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["axfs_devfs",[["impl <a class=\"trait\" href=\"axfs_vfs/trait.VfsNodeOps.html\" title=\"trait axfs_vfs::VfsNodeOps\">VfsNodeOps</a> for <a class=\"struct\" href=\"axfs_devfs/struct.DirNode.html\" title=\"struct axfs_devfs::DirNode\">DirNode</a>"],["impl <a class=\"trait\" href=\"axfs_vfs/trait.VfsNodeOps.html\" title=\"trait axfs_vfs::VfsNodeOps\">VfsNodeOps</a> for <a class=\"struct\" href=\"axfs_devfs/struct.NullDev.html\" title=\"struct axfs_devfs::NullDev\">NullDev</a>"],["impl <a class=\"trait\" href=\"axfs_vfs/trait.VfsNodeOps.html\" title=\"trait axfs_vfs::VfsNodeOps\">VfsNodeOps</a> for <a class=\"struct\" href=\"axfs_devfs/struct.UrandomDev.html\" title=\"struct axfs_devfs::UrandomDev\">UrandomDev</a>"],["impl <a class=\"trait\" href=\"axfs_vfs/trait.VfsNodeOps.html\" title=\"trait axfs_vfs::VfsNodeOps\">VfsNodeOps</a> for <a class=\"struct\" href=\"axfs_devfs/struct.ZeroDev.html\" title=\"struct axfs_devfs::ZeroDev\">ZeroDev</a>"]]],["axfs_ramfs",[["impl <a class=\"trait\" href=\"axfs_vfs/trait.VfsNodeOps.html\" title=\"trait axfs_vfs::VfsNodeOps\">VfsNodeOps</a> for <a class=\"struct\" href=\"axfs_ramfs/struct.DirNode.html\" title=\"struct axfs_ramfs::DirNode\">DirNode</a>"],["impl <a class=\"trait\" href=\"axfs_vfs/trait.VfsNodeOps.html\" title=\"trait axfs_vfs::VfsNodeOps\">VfsNodeOps</a> for <a class=\"struct\" href=\"axfs_ramfs/struct.FileNode.html\" title=\"struct axfs_ramfs::FileNode\">FileNode</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[957,486]}
